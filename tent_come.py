@@ -5,16 +5,15 @@ import torch.nn as nn
 import torch.jit
 import torch.nn.functional as F
 
-class Tent(nn.Module):
-    """Tent adapts a model by entropy minimization during testing.
-    Once tented, a model adapts itself by updating on every forward.
+class Tent_COME(nn.Module):
+    """Tent_COME adapts a model by entropy minimization during testing.
     """
     def __init__(self, model, optimizer,args, steps=1, episodic=False):
         super().__init__()
         self.model = model
         self.optimizer = optimizer
         self.steps = steps
-        assert steps > 0, "tent requires >= 1 step(s) to forward and update"
+        assert steps > 0, "tent_come requires >= 1 step(s) to forward and update"
         self.episodic = episodic
         self.args = args
         self.model_state, self.optimizer_state = \
@@ -88,7 +87,7 @@ def load_model_and_optimizer(model, optimizer, model_state, optimizer_state):
     optimizer.load_state_dict(optimizer_state)
 
 def configure_model(model):
-    """Configure model for use with tent."""
+    """Configure model for use with tent_come."""
     model.train()
     model.requires_grad_(False)
     for m in model.modules():
@@ -102,15 +101,15 @@ def configure_model(model):
     return model
 
 def check_model(model):
-    """Check model for compatability with tent."""
+    """Check model for compatability with tent_come."""
     is_training = model.training
-    assert is_training, "tent needs train mode: call model.train()"
+    assert is_training, "tent_come needs train mode: call model.train()"
     param_grads = [p.requires_grad for p in model.parameters()]
     has_any_params = any(param_grads)
     has_all_params = all(param_grads)
-    assert has_any_params, "tent needs params to update: " \
+    assert has_any_params, "tent_come needs params to update: " \
                            "check which require grad"
-    assert not has_all_params, "tent should not update all params: " \
+    assert not has_all_params, "tent_come should not update all params: " \
                                "check which require grad"
     has_bn = any([isinstance(m, nn.BatchNorm2d) for m in model.modules()])
-    assert has_bn, "tent needs normalization for its optimization"
+    assert has_bn, "tent_come needs normalization for its optimization"

@@ -57,12 +57,10 @@ def get_args():
 def get_model(args):
     bs = args.test_batch_size
     if args.model == "vitbase_timm":
-        net = timm.create_model('vit_base_patch16_224', pretrained=False, checkpoint_path='/path/to/pretrained_model_path.pth')  # pretrained model path
+        net = timm.create_model('vit_base_patch16_224', pretrained=True)
         args.lr = (0.001 / 64) * bs
     elif args.model == "resnet50_bn_torch":
-        net = Resnet.__dict__['resnet50'](pretrained=False)
-        init = torch.load('/path/to/pretrained_model_path.pth')  # pretrained model path
-        net.load_state_dict(init)
+        net = Resnet.__dict__['resnet50'](pretrained=True)
         args.lr = (0.00025 / 64) * bs * 2 if bs < 32 else 0.00025
     else:
         assert False, NotImplementedError
@@ -84,7 +82,7 @@ def get_adapt_model(net, args):
         net = tent_come.configure_model(net)
         params, param_names = tent_come.collect_params(net)
         optimizer = torch.optim.SGD(params, args.lr, momentum=0.9) 
-        adapt_model = tent_come.Tent(net, optimizer, steps=args.steps,args=args)
+        adapt_model = tent_come.Tent_COME(net, optimizer, steps=args.steps,args=args)
              
     elif args.method == 'SAR':
         net = sar.configure_model(net)
@@ -98,7 +96,7 @@ def get_adapt_model(net, args):
         params, param_names = sar_come.collect_params(net)
         base_optimizer = torch.optim.SGD
         optimizer = SAM(params, base_optimizer, lr=args.lr, momentum=0.9)
-        adapt_model = sar_come.SAR(net, optimizer, margin_e0=args.sar_margin_e0)
+        adapt_model = sar_come.SAR_COME(net, optimizer, margin_e0=args.sar_margin_e0)
     else:
         assert False, NotImplementedError
 

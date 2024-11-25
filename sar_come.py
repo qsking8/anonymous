@@ -13,13 +13,13 @@ def update_ema(ema, new_data):
         with torch.no_grad():
             return 0.9 * ema + (1 - 0.9) * new_data
 
-class SAR(nn.Module):
+class SAR_COME(nn.Module):
     def __init__(self, model, optimizer, steps=1, episodic=False, margin_e0=0.4*math.log(1000), reset_constant_em=0.2):
         super().__init__()
         self.model = model
         self.optimizer = optimizer
         self.steps = steps
-        assert steps > 0, "SAR requires >= 1 step(s) to forward and update"
+        assert steps > 0, "SAR_COME requires >= 1 step(s) to forward and update"
         self.episodic = episodic
         self.margin_e0 = margin_e0  
         self.reset_constant_em = reset_constant_em  
@@ -31,7 +31,7 @@ class SAR(nn.Module):
         if self.episodic:
             self.reset()
         for _ in range(self.steps):
-            outputs, ema, reset_flag = forward_and_adapt_sar(x, self.model, self.optimizer, self.margin_e0, self.reset_constant_em, self.ema)
+            outputs, ema, reset_flag = forward_and_adapt_sar_come(x, self.model, self.optimizer, self.margin_e0, self.reset_constant_em, self.ema)
             if reset_flag:
                 self.reset()
             self.ema = ema  
@@ -50,7 +50,7 @@ def softmax_entropy(x: torch.Tensor) -> torch.Tensor:
     return -(x.softmax(1) * x.log_softmax(1)).sum(1)
 
 @torch.enable_grad()  
-def forward_and_adapt_sar(x, model, optimizer, margin, reset_constant, ema):
+def forward_and_adapt_sar_come(x, model, optimizer, margin, reset_constant, ema):
     """Forward and adapt model input data.
     Measure entropy of the model prediction, take gradients, and update params.
     """
@@ -106,7 +106,7 @@ def load_model_and_optimizer(model, optimizer, model_state, optimizer_state):
     optimizer.load_state_dict(optimizer_state)
 
 def configure_model(model):
-    """Configure model for use with SAR."""
+    """Configure model for use with SAR_COME."""
     model.train()
     model.requires_grad_(False)
     for m in model.modules():
@@ -121,15 +121,15 @@ def configure_model(model):
 
 
 def check_model(model):
-    """Check model for compatability with SAR."""
+    """Check model for compatability with SAR_COME."""
     is_training = model.training
-    assert is_training, "SAR needs train mode: call model.train()"
+    assert is_training, "SAR_COME needs train mode: call model.train()"
     param_grads = [p.requires_grad for p in model.parameters()]
     has_any_params = any(param_grads)
     has_all_params = all(param_grads)
-    assert has_any_params, "SAR needs params to update: " \
+    assert has_any_params, "SAR_COME needs params to update: " \
                            "check which require grad"
-    assert not has_all_params, "SAR should not update all params: " \
+    assert not has_all_params, "SAR_COME should not update all params: " \
                                "check which require grad"
     has_norm = any([isinstance(m, (nn.BatchNorm2d, nn.LayerNorm, nn.GroupNorm)) for m in model.modules()])
-    assert has_norm, "SAR needs normalization layer parameters for its optimization"
+    assert has_norm, "SAR_COME needs normalization layer parameters for its optimization"
